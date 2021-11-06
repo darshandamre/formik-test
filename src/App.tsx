@@ -1,26 +1,87 @@
 import React from "react";
-import { Field, Form, Formik } from "formik";
-import { Button, TextField } from "@material-ui/core";
+import {
+  Field,
+  FieldArray,
+  FieldHookConfig,
+  Form,
+  Formik,
+  useField
+} from "formik";
+import {
+  Button,
+  Checkbox,
+  FormControlLabel,
+  MenuItem,
+  Radio,
+  Select,
+  TextField
+} from "@material-ui/core";
+import * as yup from "yup";
+
+type MyRadioProps = { label: string } & FieldHookConfig<{}>;
+
+const MyRadio: React.FC<MyRadioProps> = ({ label, ...props }) => {
+  const [field] = useField<{}>(props);
+  return <FormControlLabel {...field} control={<Radio />} label={label} />;
+};
+
+const MyTextField: React.FC<FieldHookConfig<{}>> = ({
+  placeholder,
+  ...props
+}) => {
+  const [field, meta] = useField<{}>(props);
+  const errorText = meta.error && meta.touched ? meta.error : "";
+
+  return (
+    <TextField
+      placeholder={placeholder}
+      {...field}
+      helperText={errorText}
+      error={!!errorText}
+    />
+  );
+};
+
+const validationSchema = yup.object({
+  firstName: yup.string().required().max(10),
+  pets: yup.array().of(
+    yup.object({
+      name: yup.string().required()
+    })
+  )
+});
 
 const App: React.FC = () => {
   return (
     <div>
       <Formik
-        initialValues={{ firstName: "", lastName: "" }}
-        onSubmit={(data, { setSubmitting, resetForm }) => {
+        initialValues={{
+          firstName: "",
+          lastName: "",
+          isTall: false,
+          cookies: [],
+          yogurt: "",
+          pets: [{ type: "cat", name: "jarvis", id: "" + Math.random() }]
+        }}
+        validationSchema={validationSchema}
+        // validate={values => {
+        //   const errors: Record<string, string> = {};
+
+        //   if (values.firstName.includes("bob")) {
+        //     errors.firstName = "no bob";
+        //   }
+
+        //   return errors;
+        // }}
+        onSubmit={(data, { setSubmitting }) => {
           setSubmitting(true);
           // make async call
           console.log("submit: ", data);
           setSubmitting(false);
         }}>
-        {({ values, isSubmitting }) => (
+        {({ values, errors, isSubmitting }) => (
           <Form>
-            <Field
-              placeholder="first name"
-              name="firstName"
-              type="input"
-              as={TextField}
-            />
+            <MyTextField placeholder="first name" name="firstName" />
             <div>
               <Field
                 placeholder="last name"
@@ -29,13 +90,76 @@ const App: React.FC = () => {
                 as={TextField}
               />
             </div>
+            <Field name="isTall" type="checkbox" as={Checkbox} />
+            <div>cookies:</div>
+            <Field
+              name="cookies"
+              type="checkbox"
+              value="chocolate chips"
+              as={Checkbox}
+            />
+            <Field name="cookies" type="checkbox" value="sugar" as={Checkbox} />
+            <Field
+              name="cookies"
+              type="checkbox"
+              value="snikerdoodle"
+              as={Checkbox}
+            />
+            <div>yogurt</div>
+            <MyRadio name="yogurt" type="radio" value="peach" label="peach" />
+            <MyRadio
+              name="yogurt"
+              type="radio"
+              value="blueberry"
+              label="blueberry"
+            />
+            <MyRadio name="yogurt" type="radio" value="apple" label="apple" />
 
             <div>
               <Button disabled={isSubmitting} type="submit">
                 submit
               </Button>
             </div>
+            <FieldArray name="pets">
+              {arrayHelpers => (
+                <div>
+                  <Button
+                    onClick={() =>
+                      arrayHelpers.push({
+                        type: "frog",
+                        name: "",
+                        id: "" + Math.random()
+                      })
+                    }>
+                    add pet
+                  </Button>
+                  {values.pets.map((pet, index) => {
+                    return (
+                      <div key={pet.id}>
+                        <MyTextField
+                          placeholder="pet name"
+                          name={`pets.${index}.name`}
+                        />
+                        <Field
+                          name={`pets.${index}.type`}
+                          type="select"
+                          as={Select}>
+                          <MenuItem value="cat">cat</MenuItem>
+                          <MenuItem value="dog">dog</MenuItem>
+                          <MenuItem value="frog">frog</MenuItem>
+                        </Field>
+
+                        <Button onClick={() => arrayHelpers.remove(index)}>
+                          x
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </FieldArray>
             <pre>{JSON.stringify(values, null, 2)}</pre>
+            <pre>{JSON.stringify(errors, null, 2)}</pre>
           </Form>
         )}
       </Formik>
